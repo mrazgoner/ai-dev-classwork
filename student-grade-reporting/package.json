@@ -1,0 +1,12 @@
+{
+  "name": "student-grade-reporting",
+  "version": "1.0.0",
+  "description": "Beginner-friendly Express service for student grade reports",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Student Grade Reporting</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #1c2430;
+        --muted: #5c6775;
+        --line: #d9d3c7;
+        --paper: #fffdf8;
+        --accent: #1f6f5b;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background: #f3efe6;
+        color: var(--ink);
+      }
+
+      main {
+        max-width: 880px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+
+      h1, h2 { font-weight: 600; }
+      h1 { margin-bottom: 8px; }
+      p { color: var(--muted); }
+
+      .panel, .card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .forms {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin: 20px 0;
+      }
+
+      form { display: grid; gap: 10px; }
+      label { font-size: 0.95rem; }
+      input, select, button {
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+      }
+      button {
+        background: var(--accent);
+        color: white;
+        border: 0;
+        cursor: pointer;
+      }
+      .message { min-height: 1.2em; color: #8a3b2c; }
+
+      .summary {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 16px;
+      }
+      .students { display: grid; gap: 12px; }
+      .card h3 { margin: 0 0 8px; }
+      .meta { color: var(--muted); }
+
+      @media (max-width: 700px) {
+        .forms, .summary { grid-template-columns: 1fr; display: grid; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Student Grade Reporting</h1>
+      <p>Add students and grades. Reports are calculated by the Express service.</p>
+
+      <section class="panel summary" id="summary">Loading class summary...</section>
+
+      <div class="forms">
+        <section class="panel">
+          <h2>Add a student</h2>
+          <form id="student-form">
+            <label>
+              Name
+              <input name="name" required placeholder="Taylor Brooks" />
+            </label>
+            <label>
+              Grades (optional, comma separated)
+              <input name="grades" placeholder="90, 84, 77" />
+            </label>
+            <button type="submit">Save student</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Add a grade</h2>
+          <form id="grade-form">
+            <label>
+              Student
+              <select name="studentId" required></select>
+            </label>
+            <label>
+              Grade (0–100)
+              <input name="grade" type="number" min="0" max="100" step="0.1" required />
+            </label>
+            <button type="submit">Save grade</button>
+          </form>
+        </section>
+      </div>
+
+      <p class="message" id="message"></p>
+      <section class="students" id="students"></section>
+    </main>
+
+    <script>
+      const summaryEl = document.querySelector("#summary");
+      const studentsEl = document.querySelector("#students");
+      const studentSelect = document.querySelector("select[name='studentId']");
+      const messageEl = document.querySelector("#message");
+
+      function showError(error) {
+        messageEl.textContent = error.message || "Something went wrong.";
+      }
+
+      async function readJson(response) {
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Request failed.");
+        }
+        return data;
+      }
+
+      function score(value) {
+        return value === null ? "N/A" : Number(value).toFixed(2);
+      }
+
+      function render(report) {
+        summaryEl.innerHTML = `
+          <div><strong>Students</strong><br />${report.studentCount}</div>
+          <div><strong>Passing</strong><br />${report.passingCount}</div>
+          <div><strong>Class average</strong><br />${score(report.classAverage)}</div>
+        `;
+
+        studentSelect.innerHTML = report.students
+          .map((student) => `<option value="${student.id}">${student.name}</option>`)
+          .join("");
+
+        studentsEl.innerHTML = report.students
+          .map((student) => {
+            const grades = student.grades.length ? student.grades.join(", ") : "No grades recorded";
+            return `
+              <article class="card">
+                <h3>${student.name}</h3>
+                <div class="meta">Grades: ${grades}</div>
+                <div>Average ${score(student.average)} · ${student.letterGrade} · ${student.status}</div>
+              </article>
+            `;
+          })
+          .join("");
+      }
+
+      async function loadReport() {
+        const response = await fetch("/api/reports");
+        render(await readJson(response));
+      }
+
+      document.querySelector("#student-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        messageEl.textContent = "";
+        const form = new FormData(event.currentTarget);
+        const gradesText = String(form.get("grades") || "").trim();
+        const grades = gradesText
+          ? gradesText.split(",").map((grade) => Number(grade.trim()))
+          : [];
+
+        try {
+          const response = await fetch("/api/students", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: form.get("name"), grades }),
+          });
+          await readJson(response);
+          event.currentTarget.reset();
+          await loadReport();
+        } catch (error) {
+          showError(error);
+        }
+      });
+
+      document.querySelector("#grade-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        messageEl.textContent = "";
+        const form = new FormData(event.currentTarget);
+
+        try {
+          const response = await fetch(`/api/students/${form.get("studentId")}/grades`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ grade: Number(form.get("grade")) }),
+          });
+          await readJson(response);
+          event.currentTarget.elements.grade.value = "";
+          await loadReport();
+        } catch (error) {
+          showError(error);
+        }
+      });
+
+      loadReport().catch(showError);
+    </script>
+  </body>
+</html>
