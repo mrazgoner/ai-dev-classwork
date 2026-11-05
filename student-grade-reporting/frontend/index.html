@@ -121,6 +121,7 @@
     </main>
 
     <script>
+      const API_BASE_URL = "http://localhost:3000";
       const summaryEl = document.querySelector("#summary");
       const studentsEl = document.querySelector("#students");
       const studentSelect = document.querySelector("select[name='studentId']");
@@ -168,7 +169,7 @@
       }
 
       async function loadReport() {
-        const response = await fetch("/api/reports");
+        const response = await fetch(`${API_BASE_URL}/api/reports`);
         render(await readJson(response));
       }
 
@@ -182,7 +183,7 @@
           : [];
 
         try {
-          const response = await fetch("/api/students", {
+          const response = await fetch(`${API_BASE_URL}/api/students`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: form.get("name"), grades }),
@@ -201,7 +202,7 @@
         const form = new FormData(event.currentTarget);
 
         try {
-          const response = await fetch(`/api/students/${form.get("studentId")}/grades`, {
+          const response = await fetch(`${API_BASE_URL}/api/students/${form.get("studentId")}/grades`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ grade: Number(form.get("grade")) }),

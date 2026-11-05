@@ -1,7 +1,7 @@
 // Express service for storing students and printing grade reports.
 
-const path = require("path");
 const express = require("express");
+const cors = require("cors");
 const Student = require("./student");
 const {
   buildStudentSummary,
@@ -33,8 +33,8 @@ function findStudent(id) {
   return students.find((student) => student.id === Number(id));
 }
 
+app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/api/students", (req, res) => {
   res.json(students.map(buildStudentSummary));

@@ -1,5 +1,5 @@
 {
-  "name": "student-grade-reporting",
+  "name": "student-grade-reporting-backend",
   "version": "1.0.0",
   "description": "Beginner-friendly Express service for student grade reports",
   "main": "main.js",
@@ -7,6 +7,7 @@
     "start": "node main.js"
   },
   "dependencies": {
+    "cors": "^2.8.6",
     "express": "^4.21.2"
   }
 }
